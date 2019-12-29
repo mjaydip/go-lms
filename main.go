@@ -7,14 +7,14 @@ import (
 
 	"github.com/mjaydip/go-lms/server/fileio"
 
+	"github.com/mjaydip/go-lms/console"
 	"github.com/mjaydip/go-lms/server/user"
 )
 
 const commandsFile = "commands.txt"
 
 func main() {
-	u := new(user.Users)
-	u.LoadUsers()
+	user.GetInst().LoadUsers()
 
 	scanner := bufio.NewScanner(os.Stdin)
 
@@ -31,7 +31,10 @@ func main() {
 
 		switch cmd {
 		case "u", "U":
-			fmt.Println("User case")
+			fmt.Print("Enter operation type: ")
+			scanner.Scan()
+			op := scanner.Text()
+			console.HandleUserOp(op, scanner)
 		default:
 			fmt.Println("Select from available commands")
 		}
@@ -40,5 +43,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "error:", err)
 		os.Exit(1)
 	}
+
+	user.GetInst().PrintUsers()
 	fmt.Println("Good Bye!")
 }
