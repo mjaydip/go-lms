@@ -9,6 +9,8 @@ import (
 
 func main() {
 	db := database.GetConnection()
+	defer db.Close()
+
 	router := gin.Default()
 
 	// Setup User routes
