@@ -1,76 +1,48 @@
 package user
 
 import (
-	"strings"
-	"time"
+	"database/sql"
 
-	"github.com/mjaydip/go-lms/server/fileio"
+	"github.com/gin-gonic/gin"
+	"github.com/go-sql-driver/mysql"
 )
 
-const userFile = "users.txt"
+var db *sql.DB
 
-// LayoutISO is a const layout for date
-const LayoutISO = "2006-01-02"
+// InitCtrl handles controller initialization
+func InitCtrl(mysql *sql.DB, r *gin.Engine) {
+	db = mysql
 
-// Users type provides interaction of user
-type Users struct {
-	userList []User
+	r.GET("/users", GetAllUsers)
 }
 
-var userManager Users
+// GetAllUsers sets GET route for all users
+func GetAllUsers(c *gin.Context) {
+	selDB, err := db.Query("SELECT * FROM lms_user")
+	if err != nil {
+		panic(err.Error())
+	}
 
-// GetInst returns single instance of User manager
-func GetInst() *Users {
-	return &userManager
-}
-
-// LoadUsers creates user list and load data from data source
-func (u *Users) LoadUsers() {
-	u.userList = make([]User, 0)
-	userStr := fileio.ReadFile(userFile)
-	lines := strings.Split(userStr, "\n")
-	for _, line := range lines {
-		elems := strings.Split(line, ",")
-		dob, _ := time.Parse(LayoutISO, elems[5])
+	res := []User{}
+	for selDB.Next() {
+		var dob mysql.NullTime
+		var userID, fname, lname, pwd, mobile string
+		err = selDB.Scan(&userID, &pwd, &fname, &lname, &dob, &mobile)
+		if err != nil {
+			panic(err.Error())
+		}
 		usr := User{
-			UserID:    elems[0],
-			FirstName: elems[1],
-			LastName:  elems[2],
-			Password:  elems[3],
-			Mobile:    elems[4],
+			UserID:    userID,
+			FirstName: fname,
+			LastName:  lname,
+			Password:  pwd,
+			Mobile:    mobile,
 			DOB:       dob,
 		}
-		u.userList = append(u.userList, usr)
-	}
-}
-
-// SaveUsers saves current state of userList to file
-func (u *Users) SaveUsers() {
-	s := ""
-	for i, user := range u.userList {
-		s += user.String()
-		if i < len(u.userList)-1 {
-			s += "\n"
-		}
+		res = append(res, usr)
 	}
 
-	fileio.WriteFile(userFile, []byte(s))
-}
-
-// AddUser adds a new user to the list
-func (u *Users) AddUser(usr *User) {
-	u.userList = append(u.userList, *usr)
-	u.SaveUsers()
-}
-
-// GetUsers provides list of users
-func (u *Users) GetUsers() []User {
-	return u.userList
-}
-
-// PrintUsers prints table of user details
-func (u *Users) PrintUsers() {
-	for _, user := range u.userList {
-		user.Print()
-	}
+	c.JSON(200, gin.H{
+		"data": res,
+	})
 }
